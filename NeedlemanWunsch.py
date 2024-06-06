@@ -12,6 +12,25 @@ class NeedlemanWunsch:
         self.seq1 = seq1
         self.seq2 = seq2
     
+    def print_matrix(self, matrix):
+        """
+        Helper function to print matrix nicely.
+
+        Args:
+            matrix (arr[][]): matrix to print
+        """
+        header = [" "] + list(self.seq2)
+        table = []
+
+        for i in range(len(matrix)):
+            if i == 0:
+                row = [" "] + matrix[i]
+            else:
+                row = [self.seq1[i-1]] + matrix[i]
+            table.append(row)
+        print(tabulate(table, headers=header, tablefmt="grid"))
+
+        
     def init_matrix(self):
         """
         Initialize the matrix to the seq length + 1
@@ -32,7 +51,6 @@ class NeedlemanWunsch:
         for j in range(1, cols):
             matrix[0][j] = j * self.GAP_PENALTY
             
-        print(tabulate(matrix, tablefmt="grid"))
         return matrix
     
     def forward_pass(self, matrix): 
@@ -51,14 +69,72 @@ class NeedlemanWunsch:
         for i in range(1, len(self.seq1) + 1):
             for j in range(1, len(self.seq2) + 1):
                 # Calculate match score (diag) - diagonal cell + match_score if sequence letters match else + mismatch_penalty
-                diag = matrix[i-1][j-1] + (self.MATCH_SCORE if self.seq1[i-1] == self.seq2[i-1] else self.MISMATCH_PENALTY)
-                top = matrix[i-1][j-1] + matrix[i-1][j]
-                left = matrix[i-1][j-1] + matrix[i][j-1]
+                diag = matrix[i-1][j-1] + (self.MATCH_SCORE if self.seq1[i-1] == self.seq2[j-1] else self.MISMATCH_PENALTY)
+                top = matrix[i-1][j] + self.GAP_PENALTY
+                left = matrix[i][j-1] + self.GAP_PENALTY
                 matrix[i][j] = max(diag, top, left)
     
-        print(tabulate(matrix, tablefmt="grid"))
+    def backtrack(self, matrix):
+        """
+        1. Start bottom right corner (end of allignment)
+        2. Determine move: diag (match/mismatch), left (gap in seq1), up (gap in second seq2)
+            - if sequence letters match move diagonal
+            - if left number bigger than top go left
+            - if top number bigger than left go up
+        3. Record allignment: diag (add letters from both sequences), up (add letter from seq1 and a gap "-" to seq2), left (add gap "-" to seq1 and add letter from seq2)
+        4. Move to next cell depending on result from step 2. 
+        5. Repeat steps 1-4 until top left cell is reached
+        6. Final allignment is backwards to reverse the order.
+
+        Args:
+            matrix (_type_): _description_
+        """
+
+        alignment1 = []
+        alignment2 = []
+        i, j = len(self.seq1), len(self.seq2)
+
+        while i > 0 and j > 0:
+            # 
+            up_score = matrix[i-1][j]
+            left_score = matrix[i][j-1]
   
-test = NeedlemanWunsch("TACGA", "TATGC" )
+            # check diagonal move
+            if self.seq1[i-1] == self.seq2[j-1]:
+                alignment1.append(self.seq1[i-1])
+                alignment2.append(self.seq2[j-1])
+                i -= 1
+                j -= 1
+            elif up_score >= left_score:
+                alignment1.append(self.seq1[i-1])
+                alignment2.append("-")
+                i -= 1
+            else:
+                alignment1.append("-")
+                alignment2.append(self.seq2[j-1])
+                j -= 1
+        
+        while i > 0:
+            alignment1.append(self.seq1[i-1])
+            alignment2.append("-")
+            i -= 1
+        
+        while j > 0:
+            alignment1.append("-")
+            alignment2.append(self.seq2[j-1])
+            j -= 1
+
+        alignment1.reverse()
+        alignment2.reverse() 
+
+        print(f"alignment1: {alignment1}")
+        print(f"alignment2: {alignment2}")
+
+
+
+test = NeedlemanWunsch("GAAC", "GAAGAC")
 mat = test.init_matrix()
 test.forward_pass(mat)
+test.print_matrix(mat) 
+test.backtrack(mat)
 
